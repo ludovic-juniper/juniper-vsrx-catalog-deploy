@@ -104,13 +104,13 @@ resource "ibm_is_instance" "sample_vsi" {
     security_groups = [ibm_is_security_group.vsi_security_group.id]
   }
 
-    primary_network_interface {
+  network_interface {
     name = "eth1"
     subnet = data.ibm_is_subnet.vsi_subnet2.id
     security_groups = [ibm_is_security_group.vsi_security_group.id]
   }
 
-    primary_network_interface {
+  network_interface {
     name = "eth2"
     subnet = data.ibm_is_subnet.vsi_subnet3.id
     security_groups = [ibm_is_security_group.vsi_security_group.id]
