@@ -58,8 +58,8 @@ data "ibm_is_subnet" "vsi_subnet3"{
 //security group
 resource "ibm_is_security_group" "vsi_security_group" {
   name           = var.vsi_security_group
-  vpc            = data.ibm_is_subnet.vsi_subnet.vpc
-  resource_group = data.ibm_is_subnet.vsi_subnet.resource_group
+  vpc            = data.ibm_is_subnet.vsi_subnet1.vpc
+  resource_group = data.ibm_is_subnet.vsi_subnet1.resource_group
 }
 
 //security group rule to allow ssh
@@ -96,7 +96,7 @@ resource "ibm_is_instance" "sample_vsi" {
   name           = var.vsi_instance_name
   image          = local.image_map[var.region]
   profile        = data.ibm_is_instance_profile.vsi_profile.name
-  resource_group = data.ibm_is_subnet.vsi_subnet.resource_group
+  resource_group = data.ibm_is_subnet.vsi_subnet1.resource_group
 
   primary_network_interface {
     name = "eth0"
@@ -116,8 +116,8 @@ resource "ibm_is_instance" "sample_vsi" {
     security_groups = [ibm_is_security_group.vsi_security_group.id]
   }
   
-  vpc  = data.ibm_is_subnet.vsi_subnet.vpc
-  zone = data.ibm_is_subnet.vsi_subnet.zone
+  vpc  = data.ibm_is_subnet.vsi_subnet1.vpc
+  zone = data.ibm_is_subnet.vsi_subnet1.zone
   keys = [data.ibm_is_ssh_key.vsi_ssh_pub_key.id]
 }
 
