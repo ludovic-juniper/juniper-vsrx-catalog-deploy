@@ -1,4 +1,4 @@
-local {
+locals {
         image_map = {
 			"us-south" = "r006-19224a9f-9bc1-40a6-8560-c0840581e12d"
 			"us-east" = "r014-426f77ab-0f97-4b78-b25a-5f5071613154"
