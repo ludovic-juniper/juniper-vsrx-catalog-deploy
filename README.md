@@ -1,228 +1,129 @@
-# Description
-This directory contains the sample Terraform code to create a virtual server instance image. 
+---
 
-# Prerequisites
+copyright:
+  years: 2019, 2021
 
-  1. Create an IBM Cloud Object Storage bucket and upload the `qcow2` image, which will be used to create a custom image in your account. For more information, see the following links:
-    
-   * [Getting started with Cloud Object Storage](https://cloud.ibm.com/docs/cloud-object-storage?topic=cloud-object-storage-getting-started-cloud-object-storage)
-   * [Images](https://cloud.ibm.com/docs/vpc?topic=vpc-about-images)
-  
-  2. Create a Virtual Private Cloud (VPC) and subnet. For more information, see [Getting started with VPC](https://cloud.ibm.com/docs/vpc?topic=vpc-getting-started).  
-  3. Create a [SSH key](https://cloud.ibm.com/docs/vpc?topic=vpc-ssh-keys). 
-  4. Create a [virtual server instance](https://cloud.ibm.com/docs/vpc?topic=vpc-creating-virtual-servers).   
+---
 
-# Import your custom image to all supported regions
+<!-- Start with a short description that explains what the product is, why a customer would want to install and use it, etc. The following info is used here as an example. Be sure to update it accordingly. -->
 
-When you are ready to make your image publicly available, import it to every region in which you want your solution to be available. The region endpoint URL can be derived by using the /regions API as shown in the following example:
+Product Description
+Data centers increasingly rely on server virtualization to deliver services faster and more efficiently than ever before. The virtualized data center, however, introduces new challenges that require additional security considerations beyond those needed to secure physical assets.
 
-**Note**: You will need to acquire a bearer token before making the API call. One way to do this is to use the command `ibmcloud iam oauth-tokens`.
+Virtual machines (VM) can be highly dynamic and elastic in a virtualized data center, with frequent additions, moves, and changes. These frequent changes complicate the ability to attach security policies to a VM instantiation and track security policies with VM movement to ensure continued regulatory compliance. 
 
-```
-export iam_token=<your bearer token>
-curl -k -sS -X GET "https://us-south.iaas.cloud.ibm.com/v1/regions?generation=2&version=2021-02-26" -H "Authorization: Bearer $iam_token"  | jq .
-{
-  "regions": [
-    {
-      "name": "au-syd",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/au-syd",
-      "endpoint": "https://au-syd.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "eu-de",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/eu-de",
-      "endpoint": "https://eu-de.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "eu-gb",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/eu-gb",
-      "endpoint": "https://eu-gb.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "jp-osa",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/jp-osa",
-      "endpoint": "https://jp-osa.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "jp-tok",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/jp-tok",
-      "endpoint": "https://jp-tok.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "us-east",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/us-east",
-      "endpoint": "https://us-east.iaas.cloud.ibm.com",
-      "status": "available"
-    },
-    {
-      "name": "us-south",
-      "href": "https://us-south.iaas.cloud.ibm.com/v1/regions/us-south",
-      "endpoint": "https://us-south.iaas.cloud.ibm.com",
-      "status": "available"
-    }
-  ]
-}
+In short, the dynamic and flexible nature of virtualization can easily lead to a loss of visibility and control.
+Network and security professionals must perform a delicate balancing act, delivering the benefits of virtualization and cloud technologies without undermining the organization's security.
 
-```
+This challenge can only be met by a security solution that can keep pace with evolving threats while matching the agility and scalability of virtualized and cloud environments—without sacrificing reliability, visibility, and control.
+
+Juniper addresses these challenges head-on by extending the capabilities of the awardwinning Juniper Networks® SRX Series Services Gateways to the virtual world with the vSRX Virtual Firewall. 
+
+Juniper makes security easy by securing the cloud at every level: between applications, between instances, and across environments.
+
+Powered by Juniper Networks Junos® operating system, the vSRX delivers a complete and integrated virtual security solution, including L4-L7 advanced security services, robust networking, and automated life cycle management capabilities for service providers and enterprises alike.
+
+The vSRX’s automated provisioning capabilities allow network and security administrators to quickly and efficiently provision and scale firewall protection to meet the dynamic needs of virtualized and cloud environments. By combining the vSRX with the power of Junos Space® Security Director, administrators can significantly improve policy configuration, management, and visibility into both physical and virtual assets from a standard, centralized platform.
+
+For service providers and organizations deploying service-oriented applications in software, the vSRX’s portfolio of virtualized network and security services supports a variety of Network Functions Virtualization (NFV) use cases. The vSRX also supports Juniper
+Networks Contrail, OpenContrail, and other third-party solutions, and can be integrated with other next-generation cloud orchestration tools such as OpenStack, either directly or through rich APIs.
+
+## Before you begin
+
+<!-- List any prereqs including required permissions, capacity requirements, etc. The following info is used as an example. Update accordingly. -->
+
+* Terraform >= 0.12.0
+* Terraform Provider IBM >= 1.12.0 Needs to install the IBM Provider pluging following the link IBM Setup
+* Terraform Provider Template >= 2.1.2
 
 
-The following API example shows how to use a single IBM Cloud Object Storage bucket. 
+## Required resources
 
-The image name is unique and they are regional, the same image has a different image ID in each region. In this example, the various image IDs corresponding to each region for image name `ubuntu-18-04-1-minimal-amd64-2` are specified in `image-map.tf` file. When a user specifies the region in which to create the virtual server instance, the corresponding image ID for that region is fetched. The image IDs that are mentioned in the `image-map.tf` are for the public cloud. 
+<!-- The following info is used here as an example. Be sure to update it accordingly. -->
 
-```
-# issue this for each region endpoint as derived from the preceding list. Update the setting for api_endpoint and then issue the curl command.
-export api_endpoint="https://us-south.iaas.cloud.ibm.com"
-curl -X POST -k -Ss "$api_endpoint/v1/images?generation=2&version=2021-02-26" -H "Authorization: Bearer $iam_token"  -d '{ "name": "ibm-ubuntu-18-04-1-minimal-amd64-2", "file": {"href": "cos://us-south/my-bucket/myimage.qcow2"}, "operating_system": { "name": "centos-8-amd64"} } '  |  jq .
-```
+To run the software, the following resources are required:
+* 3 subnets in your VPC : one for Out Of BAnd Management, one for private side, one for public side
+* SSH key that is used to reach the vSRX mgmt IP through SSH
+* one or more security-groups to apply to the 3 subnets 
 
-**Response**:
-```
-{
-  "id": "r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "crn": "crn:v1:staging:public:is:us-south:a/<removed>::image:r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "href": "https://us-south-genesis-test02.iaasdev.cloud.ibm.com/v1/images/r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "name": "myimage",
-  "resource_group": {
-    "id": "<removed>",
-    "href": "https://resource-controller.test.cloud.ibm.com/v1/resource_groups/<removed>"
-  },
-  "created_at": "2021-02-26T15:19:08Z",
-  "file": {},
-  "operating_system": {
-    "href": "https://us-south-genesis-test02.iaasdev.cloud.ibm.com/v1/operating_systems/centos-8-amd64",
-    "name": "centos-8-amd64",
-    "architecture": "amd64",
-    "display_name": "CentOS 8.x - Minimal Install (amd64)",
-    "family": "CentOS",
-    "vendor": "CentOS",
-    "version": "8.x - Minimal Install",
-    "dedicated_host_only": false
-  },
-  "status": "pending",
-  "visibility": "private",
-  "encryption": "none",
-  "status_reasons": []
-}
-```
+### Production configuration
 
-The image status will transition from pending to available after several minutes. To check the status: 
+<!-- Add additional H3 level headings as needed for sections that apply to use on IBM Cloud such as network policy, persistence, cluster topologies, etc.
+### H3
+### H3
+-->
 
-1. Change the API endpoint to the desired region: `export api_endpoint="https://us-south.iaas.cloud.ibm.com"`
-2. Set the image ID to the value that is returned in the preceding example for the region (`api_endpoint`) that you want to check: `export image_id=<image id returned for this region>`
-3. Run the following command:
+Application Visibility and Control with AppSecure
 
-```
-curl -k -sS -X GET "$api_endpoint/v1/images/$image_id?generation=2&limit=100&version=2021-02-26" -H "Authorization: Bearer $iam_token"  | jq .
-{
-  "id": "r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "crn": "crn:v1:staging:public:is:us-south:a/<removed>::image:r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "href": "https://us-south-genesis-test02.iaasdev.cloud.ibm.com/v1/images/r134-e2a3594d-eef0-4e20-bbcb-d9ca8a2fc9fa",
-  "name": "myimage",
-  "resource_group": {
-    "id": "<removed>",
-    "href": "https://resource-controller.test.cloud.ibm.com/v1/resource_groups/<removed>"
-  },
-  "created_at": "2021-02-26T15:19:08Z",
-  "file": {},
-  "operating_system": {
-    "href": "https://us-south-genesis-test02.iaasdev.cloud.ibm.com/v1/operating_systems/centos-8-amd64",
-    "name": "centos-8-amd64",
-    "architecture": "amd64",
-    "display_name": "CentOS 8.x - Minimal Install (amd64)",
-    "family": "CentOS",
-    "vendor": "CentOS",
-    "version": "8.x - Minimal Install",
-    "dedicated_host_only": false
-  },
-  "status": "available",
-  "visibility": "private",
-  "encryption": "none",
-  "status_reasons": []
-}
-```
+AppSecure is a next-generation application security suite for vSRX
+and SRX Series Services Gateways that delivers threat visibility,
+protection, enforcement, and control.
+Whether needing to understand how many users are accessing
+cloud-based applications like Facebook every day, or needing to
+know what applications are using the most bandwidth, AppSecure
+delivers powerful visibility and ongoing application tracking. With
+open signatures, unique application sets can be monitored,
+measured, and controlled to tie closely to the organization’s
+business priorities.
 
-You now have private images in each desired region.   
-  
-# Create your Terraform template
+Juniper Advanced Threat Prevention
 
-Before you begin, make sure that you have the following IBM Cloud Identity and Access Management (IAM) permissions:
-
- * Manager service access role for IBM Cloud Schematics
- * Operator platform role for VPC Infrastructure
-
-For more details, see [Creating Terraform templates](https://cloud.ibm.com/docs/schematics?topic=schematics-create-tf-config).  
-
-# Test your Terraform template
-
-To test your template, run the following commands from the Terraform CLI: 
-
-* `terraform init`
-* `terraform validate`
-
-For more information, see [Terraform and the IBM Cloud provider plug-in](https://cloud.ibm.com/docs/ibm-cloud-provider-for-terraform?topic=ibm-cloud-provider-for-terraform-setup_cli).
-
-# Upload your Terraform template to a GitHub release
-
-Use the [latest isv-vsi-product-deploy-sample release](https://github.com/IBM-Cloud/isv-vsi-product-deploy-sample/releases) as an example of how to set up your release. 
-
-**Tip**: Make sure to note the URL of your `.tgz` file.
-
-# Onboard your Terraform template to the IBM Cloud catalog
-
-The onboarding process includes importing your `.tgz` file that you created in the previous section to a private catalog, configuring the deployment values, and then validating the Terraform template. For more details, see [Onboarding a virtual server image](https://cloud.ibm.com/docs/third-party?topic=third-party-vsimage-onboard).
-
-# Update the visibility of your image (patch API)
-
-You can make your virtual server image public only after you validate your Terraform template, and IBM Cloud has granted you access to the REST API you use to update the image visibility. If you run into issues, you can contact us by going **Partner Center** > **My products** > **Help icon**. 
-
-**Important**: The ability to patch the visibility of an image is beta functionality and is subject to change. 
-
-The REST API supports patching the visibility of the virtual server image to `public`. You are required to run the command in every applicable region and use the image ID that's unique to each region as previously described. Note that this effectively makes the image usable by any other IBM Cloud account, however, the image is not actually visible to other accounts. Your image is not discoverable by way of the API. To create a virtual server instance by using the image, the image ID needs to be known.  
-
-To update the visibility of the image, complete the following steps:
-
-1. Change the API endpoint to the desired region: `export api_endpoint="https://us-south.iaas.cloud.ibm.com"`.
-2. Set the image ID to the value that is returned in the preceding example for the region (`api_endpoint`) that you want to check: `export image_id=<image id returned for this region>`.
-3. Run the following command:
-
-```
-curl  -X PATCH "$api_endpoint/v1/images/$image_id?generation=2&version=2021-02-26"  -H "Authorization: Bearer $iam_token" -d '{"visibility": "public"} ' | jq .
-```
-
-# Publishing a new version
-
-To publish a new version of your image, complete the following steps: 
-
-1. Import the new version as described in the previous Import your custom image to all supported regions section.
-2. Edit the `variables.tf` file by updating the image_name variable. 
-3. Create an updated GitHub release to create a new `.tgz` file, and note the new URL as previously described in the Create GIT release for artifacts and .tgz section.
-4. Onboard the new version in your private catalog as previously described in the Onboard your Terraform template section. 
-5. Make your image public as previously described. 
-
-(Optional) To deprecate a previous version, complete the following steps:
-  
- 1. Revert the image to being private:
-
-  ```
-  curl  -X PATCH "$api_endpoint/v1/images/$image_id?generation=2&version=2021-02-26"  -H "Authorization: Bearer $iam_token" -d '{"visibility": "private"} ' | jq .
-
-  ```
-  
- 2. Delete the image:
-  
-  ```
-  curl  -X DELETE "$api_endpoint/v1/images/$image_id?generation=2&version=2021-02-26"  -H "Authorization: Bearer $iam_token" | jq .
-  ```
-
-**Note**: Run the commands in each region to ensure that you deprecate the previous version in all regions.
-  
-  
+Juniper Advanced Threat Prevention integrates with the vSRX to provide dynamic, automated protection against known malware and advanced zero-day threats, resulting in instantaneous responses.
+Security policies determine if a session can originate in one zone and be forwarded to another zone. The vSRX receives packets and keeps track of every session, every application, and every user. As a VM moves within a virtualized or cloud environment, it will still send packets to the vSRX for processing, continuously communicating in a secure mode.
 
 
+High Availability (HA)
 
+The vSRX provides mission-critical reliability, supporting chassis clustering for active/active and active/passive modes. The HA functionality provides full stateful failover for any connections
+processed and for cluster members to span hypervisors. When configured in a cluster, vSRX VMs synchronize the connection/session state and flow information with IPsec security associations,
+Network Address Translation (NAT) traffic, address book information, configuration changes, and more. As a result, not only is the session preserved during failover, but security is also kept
+intact. In an unstable network, vSRX also mitigates link flapping.
+
+
+Juniper Secure Connect
+
+Juniper Secure Connect is a highly flexible SSL VPN application that provides secure access to corporate and cloud resources for employees working away from protected resources.
+Juniper Secure Connect is available for desktop and mobile devices including Windows, Mac OS, Android, and iOS. When combined with the SRX Series Services Gateways, Secure Connect helps organizations achieve dynamic, flexible, and adaptable connectivity to any device anywhere, reducing risk by extending visibility and enforcement from users to cloud.
+
+
+## Upgrading to a new version
+
+<!-- How can a user upgrade to a new version when it's available? The following info is used as an example. Update accordingly. -->
+
+When a new version of a Helm Chart is available, you're alerted in your Schematics workspace. To upgrade to a new version, complete the following steps:
+
+1. Go to the **Menu** > **Schematics**.
+2. Select your workspace name. 
+3. Click **Settings**. In the Summary section, your version number is displayed. 
+4. Click **Update**.
+5. Select a version, and click **Update**.
+
+## Uninstalling the software
+
+<!-- How can a user uninstall this product? The following info is used as an example. Update accordingly. -->
+
+Complete the following steps to uninstall a Helm Chart from your account. 
+
+1. Go to the **Menu** > **Schematics**.
+2. Select your workspace name. 
+3. Click **Actions** > **Destroy resources**. All resources in your workspace are deleted.
+4. Click **Update**.
+5. To delete your workspace, click **Actions** > **Delete workspace**.
+
+## Getting support
+
+<!-- Reuse the support information (contact info and availability) that your team provided on the Support tab in Partner Center exactly as is. The following is an example. -->
+
+Support site URL
+
+https://apps.juniper.net/home/vsrx/support
+Support response process
+Keeping your network up and running depends on the ability to resolve issues fast or even proactively identifying conditions before they impact service. Juniper offers a wide range of support services, that can be highly customized, to help you manage your network for optimal performance and reliability while improving operational efficiency. Juniper’s flexible maintenance services offer mission-critical support for Juniper hardware and software products around the clock, 365 days a year.
+Support locations
+United States, Netherlands, Israel, India, Hong Kong, China, Japan, Korea, Republic of, Australia
+How IBM Cloud contacts your support team
+Describe how IBM Cloud Support can collaborate with your support team.
+
+Support escalations
+
+Our systematic escalation process is intended to notify and brief various levels of management throughout the lifecycle of a Service Request. Escalation timeframes are measured on a 24x7x365 basis. If the issue is not resolved to your satisfaction or in the expected timeframe, call the Customer Care number +1-888-314-5822, or +1 408-745-9500 and ask for your Service Request to be assigned to an Escalation team member. For P1 escalations occurring on weekends or after office hours, please request to have the on-call escalations Customer Care person contacted. Customer Care managers are available 7x24x365 formanagement escalations. Upon reaching Customer Care, please provide your Service Request number and ask for the escalation manager. More information at: https://support.juniper.net/support/pdf/guides/7100156-001-EN.pdf
